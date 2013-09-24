@@ -922,205 +922,26 @@ svg.popUnits = function()
 	return ("time: " + (elapsedTime / 1000.0) + " sec");
 }
 
-svg.layerSVGdata = function( params )
+// This assumes "params" are pre-defined globals
+svg.createSVGDesc = function()
 {
-	svg.reset();
-	this.pushUnits();
-	svg.processLayer( PSLayerInfo.layerIDToIndex( params.layerID ) );
-	var time = this.popUnits();
+    svg.reset();
+    svg.pushUnits();
+    svg.processLayer( PSLayerInfo.layerIDToIndex( params.layerID ) );
+    var time = svg.popUnits();
     
     var svgResult = this.svgHeader;
-	if (svg.svgDefs.length > 0)
+    if (svg.svgDefs.length > 0)
         svgResult += "<defs>\n" + svg.svgDefs + "\n</defs>";
-	if (params.layerScale != 1)
-		svgResult += '<g transform="scale(' + round1k( params.layerScale ) + ')" >';
+    if (params.layerScale != 1)
+        svgResult += '<g transform="scale(' + round1k( params.layerScale ) + ')" >';
     svgResult += svg.svgText;
     if (params.layerScale != 1)
         svgResult += '</g>';
     svgResult += "</svg>";
     var svgDesc = new ActionDescriptor();
     svgDesc.putString( app.stringIDToTypeID("svgText"), escape(svgResult) );
-	executeAction( app.stringIDToTypeID("sendJSONToNetworkClient"), svgDesc, DialogModes.NO );
-} 
-
-// Call main function
-svg.layerSVGdata( params );
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Left over file generation code
-////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// SVG: Stuff after is piled on top of stuff before.
-svg.createSVGfile = function( layerList, objScale )
-{
-	var i;
-	svg.reset();
-	var elapsedTime;
-	this.pushUnits();
-	
-	if (typeof objScale == "undefined")
-		objScale = 1;
-
-	if (typeof layerList == "object")
-		for (i in layerList)
-			svg.processLayer(  layerList[i] );
-	else
-	{
-		svg.setCurrentLayer( cssToClip.getDocAttr("numberOfLayers") + cssToClip.documentIndexOffset );
-		// Use the group as a way to walk the entire document.
-		svg.getGroupLayerSVG( true );
-	}
-
-	elapsedTime = this.popUnits();
-    
-	f.encoding = "UTF-8";	// Must match the SVG header
-	f.open('w');
-	f.write(this.svgHeader);
-
-	if (svg.svgDefs.length > 0)
-		f.writeln("<defs>\n" + svg.svgDefs + "\n</defs>");
-	if (objScale != 1)
-		f.writeln('<g transform="scale(' + round1k( objScale ) + ')" >');
-	f.writeln(svg.svgText);
-	if (objScale != 1)
-		f.writeln('</g>');
-	f.writeln("</svg>");
-	f.close();
-
-	// We can watch this in ESTK without screwing up the app
-	return elapsedTime;
+    return svgDesc;
 }
 
-svg.addSVGsuffix = function( name )
-{ 
-	// Weed out non-word characters a la plugins/assets.generate/index.js:normalizeFilename(),
-	// but do it carefully so the ".svg" suffix doesn't get mauled.
-	var suffix = (name.lastIndexOf('.') >= 0) 
-					? name.slice( name.lastIndexOf('.') ).toLowerCase() : null;
-	var base = (suffix==".svg") ? name.slice( 0, name.lastIndexOf('.') ) : name;
-	base = base.replace(/[^A-Za-z0-9]/g, '_');
-	return base + ".svg";
-}
-
-// Get the folder for this document, or the generic generator folder if the doc
-// isn't saved yet.
-svg.getDocumentFolder = function()
-{
-	var genFolder, name;
-	try {
-		genFolder = app.activeDocument.fullName.parent;
-		name = app.activeDocument.fullName.name;
-		if (name.lastIndexOf('.') >= 0)
-			name = name.slice(0, name.lastIndexOf('.'));
-	}
-	catch (err) {
-//		if (err.number !== 8103)  // It should be this error number if the doc's not saved
-		genFolder = Folder("~/Desktop/generator");
-		if (! genFolder.exists)
-			genFolder.create();
-		name = app.activeDocument.name;
-	}
-
-	genFolder += "/" + name + "-assets/";
-	if (! Folder(genFolder).exists)
-		Folder(genFolder).create()
-
-	return genFolder;
-}
-
-// Front-end to above, creating output in Generator's folder for the document.
-// This creates a file for a single SVG layer.
-svg.generateFileByIndex = function( layerIndex, layerFilename, objScale )
-{
-	var genFolder = this.getDocumentFolder();
-	this.setCurrentLayer( layerIndex );
-	if (typeof layerFilename == "undefined")
-		layerFilename = this.addSVGsuffix( this.currentLayer.getLayerAttr( 'name' ) );
-	this.createSVGfile( File( genFolder + layerFilename ), [layerIndex], objScale );
-}
-
-svg.generateFileByID = function( layerID, layerFilename, objScale )
-{
-	var layerIndex = PSLayerInfo.layerIDToIndex( layerID );
-	this.generateFileByIndex( layerIndex, layerFilename, objScale );
-}
-
-// This creates an SVG file for all the layers in the document.
-svg.generateDocumentFile = function()
-{
-	var name;
-	try {
-		name = app.activeDocument.fullName.name;
-	}
-	catch (err)
-	{
-		alert(localize("$$$/Photoshop/ConvertSVG/MustSave=Document must be saved first."));
-		return null;
-	}
-	
-	// Remove the previous suffix (e.g., ".psd")
-	if (name.lastIndexOf('.') >= 0)
-		name = name.slice(0, name.lastIndexOf('.'));
-	
-	// If a Generator-style assets folder exists, save the file there.
-	var folder = app.activeDocument.fullName.parent;
-	if (Folder(folder + "/" + name).exists)
-		folder += ("/" + name);
-
-	name += ".svg";
-	
-	var svgFile = File( folder + "/" + name );
-
-	return svg.createSVGfile( svgFile );
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Test and debug code
-////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-function testSVGgenLayerIndexList()
-{
-	return svg.generateFile( [3,4] );
-}
-
-function testlayerSVGdata()
-{
-	return svg.layerSVGdata( app.activeDocument.activeLayer.id );
-}
-
-function testSVGActiveLayer()
-{
-	// Convert active layer to SVG
-	var layerName = svg.addSVGsuffix( app.activeDocument.activeLayer.name );
-	var folderName = app.activeDocument.fullName.toString();
-	var dotPos = folderName.lastIndexOf('.');
-	var folderPath = ((dotPos >= 0) ? folderName.slice(0, dotPos) : folderName) + "-assets/";
-	if (! Folder(folderPath).exists)
-		folderPath = app.activeDocument.fullName.parent + "/";
-	return svg.createSVGfile( File( folderPath + layerName ),
-									[app.activeDocument.activeLayer] );
-}
-
-function dumpLayers()
-{
-	var i, numLayers = cssToClip.getDocAttr("numberOfLayers") + cssToClip.documentIndexOffset;
-	var layerKindNames = ["Any", "Pxl", "Adj", "Txt", "Vec", "SmO", "Vid", "Grp", "3DS", "Grd", "Ptn", "Sld", "Bgd", "Bnd"];
-	
-	$.writeln("# of layers: " + numLayers);
-	for (i = 1; i <= numLayers; ++i)
-	{
-		svg.setCurrentLayer( i );
-		var name = svg.getLayerAttr( "name" );
-		var id = svg.getLayerAttr( "layerID" );
-		var kind = svg.getLayerAttr( "layerKind" );
-		$.writeln("Layer[" + i + "] ID=" + id + " <" + layerKindNames[kind] +"> '" + name + "'" );
-	}
-}
-
-//svg.generateFileByID( app.activeDocument.activeLayer.id );  // Call used by Generator
-//dumpLayers();
-//testlayerSVGdata();
-//testSVGgenLayerIndexList();
-//testSVGActiveLayer();
-//svg.generateDocumentFile();
-//cssToClip.dumpLayers();
+executeAction( app.stringIDToTypeID("sendJSONToNetworkClient"), svg.createSVGDesc(), DialogModes.NO );

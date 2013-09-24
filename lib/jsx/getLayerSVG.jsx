@@ -938,7 +938,7 @@ svg.layerSVGdata = function( params )
     if (params.layerScale != 1)
         svgResult += '</g>';
     svgResult += "</svg>";
-	return svgResult;
+	return '{ svgText: "' + escape(svgResult) +'"}';
 } 
 
 // Call main function

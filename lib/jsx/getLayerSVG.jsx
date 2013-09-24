@@ -938,7 +938,9 @@ svg.layerSVGdata = function( params )
     if (params.layerScale != 1)
         svgResult += '</g>';
     svgResult += "</svg>";
-	return '{ svgText: "' + escape(svgResult) +'"}';
+    var svgDesc = new ActionDescriptor();
+    svgDesc.putString( app.stringIDToTypeID("svgText"), escape(svgResult) );
+	executeAction( app.stringIDToTypeID("sendJSONToNetworkClient"), svgDesc, DialogModes.NO );
 } 
 
 // Call main function

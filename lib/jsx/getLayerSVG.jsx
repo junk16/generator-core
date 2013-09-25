@@ -944,4 +944,7 @@ svg.createSVGDesc = function()
     return svgDesc;
 }
 
-executeAction( app.stringIDToTypeID("sendJSONToNetworkClient"), svg.createSVGDesc(), DialogModes.NO );
+// Don't execute if runGetLayerSVGfromScript is set, this allows other scripts
+// or test frameworks to load and run this file.
+if ((typeof runGetLayerSVGfromScript === "undefined") || (! runGetLayerSVGfromScript))
+    executeAction( app.stringIDToTypeID("sendJSONToNetworkClient"), svg.createSVGDesc(), DialogModes.NO );

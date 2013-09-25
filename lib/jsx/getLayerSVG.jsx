@@ -940,7 +940,7 @@ svg.createSVGDesc = function()
         svgResult += '</g>';
     svgResult += "</svg>";
     var svgDesc = new ActionDescriptor();
-    svgDesc.putString( app.stringIDToTypeID("svgText"), escape(svgResult) );
+    svgDesc.putString( app.stringIDToTypeID("svgText"), encodeURI(svgResult) );
     return svgDesc;
 }
 
